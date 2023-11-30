@@ -11,7 +11,7 @@ from tabulate import tabulate
 
 def get_data(ticker, start_date, end_date):
     data = yf.download(ticker, interval='1wk')
-    return data['Adj Close']
+    return data['Open'], data['Close']
 
 
 def ema(data, period):
@@ -52,7 +52,7 @@ def main(symbol):
     ticker = symbol
     start_date = '2019-01-01'
     end_date = dt.date.today()
-    data = get_data(ticker, start_date, end_date)
+    openData, data = get_data(ticker, start_date, end_date)
 
     sma_50 = sma(data, 50)
     sma_100 = sma(data, 100)
@@ -69,6 +69,7 @@ def main(symbol):
     # Create a DataFrame to store the information
     table_data = pd.DataFrame({
         'Date': data.index,
+        'Open': openData,
         'Close': data,
         'SMA 50': sma_50,
         'SMA 100': sma_100,
@@ -83,24 +84,16 @@ def main(symbol):
         'Lower Bollinger Band': lower
     })
 
-    # Buying and selling logic
-    table_data['Buy Signal'] = np.where((table_data['Close'] > table_data['SMA 50']) &
-                                        (table_data['Close'] > table_data['SMA 100']) &
-                                        (table_data['RSI 14'] < 30), 1, 0)
-    table_data['Sell Signal'] = np.where((table_data['Close'] < table_data['SMA 50']) |
-                                         (table_data['Close'] < table_data['SMA 100']) |
-                                         (table_data['RSI 14'] > 70), 1, 0)
-    
+    #Implement Buying Logic
 
 
-    
-    # Calculate the profit
+    # Convert DataFrame to tabulate table
+    table_data['Buy'] = np.where((table_data['MACD'] > table_data['Signal']) & (table_data['RSI 14'] > 30), 1, 0)
+    table_data['Sell'] = np.where((table_data['MACD'] < table_data['Signal']) & (table_data['RSI 14'] < 70), 1, 0)
 
-    table_data['Buy and Hold'] = table_data['Close'] - table_data['Close'][0]
-    table_data['Strategy'] = table_data['Buy and Hold']
-    table_data.loc[table_data['Buy Signal'] == 1, 'Strategy'] = table_data['Close']
-    table_data.loc[table_data['Sell Signal'] == 1, 'Strategy'] = table_data['Close'] - table_data['Close'][0]
-    table_data['Strategy'] = table_data['Strategy'].cumsum()
+
+
+
 
 
 
@@ -112,19 +105,12 @@ def main(symbol):
     with open('output.txt', 'w') as f:
         f.write(table)
 
-    # Save close price, date, and trading data/profits to a separate text file
-    trading_data = table_data[['Date', 'Close', 'Buy Signal', 'Sell Signal', 'Buy and Hold', 'Strategy']]
-    trading_table = tabulate(trading_data, headers='keys', tablefmt='psql')
-    with open('trading_data_' + symbol + '.txt', 'w') as f:
-        f.write(trading_table)
-
-
-tickerArray = ['gs']
+tradeOpen = False
+tickerArray = ['amd']
 
 for ticker in tickerArray:
     main(ticker)
-    print('----------------------')
-    print('----------------------')
+ 
 
 
 
